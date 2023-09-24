@@ -1,61 +1,105 @@
 {% extends "bootstrap/base.html" %}
 
 {% block content %}
-    {% if image %}
-        <img id="displayed-image"
-     src="{{ url_for('uploaded_file', filename=image.split('/')[-1]) }}"
-     data-original-src="{{ url_for('uploaded_file', filename=image.split('/')[-1]) }}"
-     onclick="recordPosition(event)">
-  <br>
+    <img id="displayed-image" src="" data-original-src="" style="display: none;"> <!-- Initially hidden -->
+
+   <div id="imageControls" style="display:none;">
+    <br>
         <button onclick="clearClicks()">Clear</button>
         <button onclick="navigate('previous')">Previous</button>
         <button onclick="navigate('next')">Next</button>
         <a href="{{ url_for('download_log') }}" class="btn btn-primary">Download Log</a>
 
         <p>Last clicked position: <span id="click-position">N/A</span></p>
-    {% else %}
-        <form action="/" method="post" enctype="multipart/form-data">
+</div>
+<div id="uploadForm">
+   <form onsubmit="event.preventDefault();">
             <label for="file">Choose a folder:</label>
-            <input type="file" name="file[]" multiple directory webkitdirectory mozdirectory>
+        <input type="file" name="file[]" id="imageInput" multiple onchange="storeImagesLocally()" />
+
             <input type="submit" value="Upload">
         </form>
-    {% endif %}
+</div>
+
+
     <script>
 
 let clicks = [];
 
-function navigate(direction) {
-    if (clicks.length === 2) {
-    const imagePath = document.getElementById('displayed-image').getAttribute('data-original-src');
+let imageIndex = 0;
+let images = [];
 
-    const logData = `${imagePath};TopLeft:${clicks[0].x}l,${clicks[0].y}t;BotRight:${clicks[1].x}l,${clicks[1].y}t`;
-    fetch('/log_clicks', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ log: logData }),
-    });
+let filenames = []; // Add this at the top with other global variables
 
-     fetch('/' + direction + '_image', {
-        method: 'POST'
-    }).then(response => response.json()).then(data => {
-      document.getElementById('displayed-image').src = data.image;
-document.getElementById('displayed-image').setAttribute('data-original-src', data.image);  // Update the data-original-src attribute
-clicks = [];  // Reset the clicks array here
-document.getElementById('click-position').textContent = "N/A";  // Update the click position display
+function storeImagesLocally() {
+    const files = document.getElementById('imageInput').files;
+    images = [];
+    filenames = [];  // Reset the filenames array
+    const reader = new FileReader();
+    let readIndex = 0;
 
-    });
+    function loadNextFile() {
+        if (readIndex < files.length) {
+            reader.readAsDataURL(files[readIndex]);
+        } else {
+            displayFirstImage();
+        }
+    }
+
+    reader.onloadend = function(event) {
+        images.push(event.target.result);
+        filenames.push(files[readIndex].name);  // Store the filename
+        readIndex++;
+        loadNextFile();
+    }
+
+    loadNextFile();
+}
+
+function displayFirstImage() {
+    imageIndex = 0;  // Reset to display the first image
+    const img = document.getElementById('displayed-image');
+    img.addEventListener('click', recordPosition);
+
+    img.style.display = "block";  // Show the image
+    img.src = images[0];
+    img.setAttribute('data-original-src', images[0]);
+    document.getElementById('imageControls').style.display = "block";
+    document.getElementById('uploadForm').style.display = "none";
 }
 
 
 
-            fetch('/' + direction + '_image', {
-                method: 'POST'
-            }).then(response => response.json()).then(data => {
-                document.getElementById('displayed-image').src = data.image;
-            });
-        }
+function navigate(direction) {
+    if (clicks.length === 2) {
+        const imagePath = document.getElementById('displayed-image').getAttribute('data-original-src');
+        const imageName = filenames[imageIndex];
+        const logData = `${imageName};TopLeft:0.${clicks[0].x}l,0.${clicks[0].y}t;BotRight:0.${clicks[1].x}l,0.${clicks[1].y}t`;
+
+        fetch('/log_clicks', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ log: logData }),
+        });
+    }
+
+    if (direction === 'previous' && imageIndex > 0) {
+        imageIndex--;
+    } else if (direction === 'next' && imageIndex < images.length - 1) {
+        imageIndex++;
+    }
+
+    const img = document.getElementById('displayed-image');
+    img.src = images[imageIndex];
+    img.setAttribute('data-original-src', images[imageIndex]);
+
+    clicks = [];  // Reset the clicks array
+    document.getElementById('click-position').textContent = "N/A";
+}
+
+
 
 
 
@@ -95,15 +139,6 @@ function clearClicks() {
     const img = document.getElementById('displayed-image');
     img.src = img.getAttribute('data-original-src');
     document.getElementById('click-position').textContent = "N/A";
-}
-
-
-
-
-function displayImage(imagePath) {
-    const img = document.getElementById('displayed-image');
-    img.src = '/uploads/' + imagePath;
-    originalImagePath = img.src;  // Store the full path immediately after setting
 }
 
 
