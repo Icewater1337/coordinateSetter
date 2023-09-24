@@ -1,0 +1,99 @@
+{% extends "bootstrap/base.html" %}
+
+{% block content %}
+    {% if image %}
+        <img id="displayed-image"
+     src="{{ url_for('uploaded_file', filename=image.split('/')[-1]) }}"
+     data-original-src="{{ url_for('uploaded_file', filename=image.split('/')[-1]) }}"
+     onclick="recordPosition(event)">
+  <br>
+        <button onclick="clearClicks()">Clear</button>
+        <button onclick="navigate('previous')">Previous</button>
+        <button onclick="navigate('next')">Next</button>
+        <p>Last clicked position: <span id="click-position">N/A</span></p>
+    {% else %}
+        <form action="/" method="post" enctype="multipart/form-data">
+            <label for="file">Choose a folder:</label>
+            <input type="file" name="file[]" multiple directory webkitdirectory mozdirectory>
+            <input type="submit" value="Upload">
+        </form>
+    {% endif %}
+    <script>
+
+
+function navigate(direction) {
+    if (clicks.length === 2) {
+    const imagePath = document.getElementById('displayed-image').getAttribute('data-original-src');
+
+    const logData = `${imagePath};TopLeft:${clicks[0].x}l,${clicks[0].y}t;BotRight:${clicks[1].x}l,${clicks[1].y}t`;
+    fetch('/log_clicks', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ log: logData }),
+    });
+}
+
+
+
+            fetch('/' + direction + '_image', {
+                method: 'POST'
+            }).then(response => response.json()).then(data => {
+                document.getElementById('displayed-image').src = data.image;
+            });
+        }
+
+let clicks = [];
+
+function recordPosition(event) {
+    if (clicks.length < 2) {
+        const x = Math.floor((event.offsetX / event.target.width) * 100);
+        const y = Math.floor((event.offsetY / event.target.height) * 100);
+        clicks.push({ x: x, y: y });
+        document.getElementById('click-position').textContent = `${x}% from left, ${y}% from top`;
+        if (clicks.length === 2) {
+            drawRectangle();
+        }
+    }
+}
+
+function drawRectangle() {
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    const img = document.getElementById('displayed-image');
+
+    canvas.width = img.width;
+    canvas.height = img.height;
+
+    ctx.drawImage(img, 0, 0);
+    if (clicks.length === 2) {
+        ctx.strokeStyle = 'red';
+        ctx.strokeRect(clicks[0].x / 100 * img.width, clicks[0].y / 100 * img.height,
+                       (clicks[1].x - clicks[0].x) / 100 * img.width,
+                       (clicks[1].y - clicks[0].y) / 100 * img.height);
+    }
+
+    img.src = canvas.toDataURL();
+}
+
+function clearClicks() {
+    clicks = [];
+    const img = document.getElementById('displayed-image');
+    img.src = img.getAttribute('data-original-src');
+    document.getElementById('click-position').textContent = "N/A";
+}
+
+
+
+
+function displayImage(imagePath) {
+    const img = document.getElementById('displayed-image');
+    img.src = '/uploads/' + imagePath;
+    originalImagePath = img.src;  // Store the full path immediately after setting
+}
+
+
+
+    </script>
+{% endblock %}

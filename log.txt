@@ -1,0 +1,1 @@
+/uploads/test_wow_classic_91_degrees_after_15_minutes.png;TopLeft:26l,40t;BotRight:42l,65t
