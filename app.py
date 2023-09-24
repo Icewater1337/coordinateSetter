@@ -3,6 +3,7 @@ from werkzeug.utils import secure_filename
 from flask_bootstrap import Bootstrap
 import os
 
+
 app = Flask(__name__)
 Bootstrap(app)
 
@@ -13,6 +14,14 @@ app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
 current_image_index = 0
 images = []
+
+from flask import send_from_directory
+
+@app.route('/download_log')
+def download_log():
+    # Assuming log.txt is in the same directory as your app.py
+    return send_from_directory(directory='.', path='log.txt', as_attachment=True)
+
 
 @app.route('/next_image', methods=['POST'])
 def next_image():

@@ -10,6 +10,8 @@
         <button onclick="clearClicks()">Clear</button>
         <button onclick="navigate('previous')">Previous</button>
         <button onclick="navigate('next')">Next</button>
+        <a href="{{ url_for('download_log') }}" class="btn btn-primary">Download Log</a>
+
         <p>Last clicked position: <span id="click-position">N/A</span></p>
     {% else %}
         <form action="/" method="post" enctype="multipart/form-data">
@@ -20,6 +22,7 @@
     {% endif %}
     <script>
 
+let clicks = [];
 
 function navigate(direction) {
     if (clicks.length === 2) {
@@ -33,6 +36,16 @@ function navigate(direction) {
         },
         body: JSON.stringify({ log: logData }),
     });
+
+     fetch('/' + direction + '_image', {
+        method: 'POST'
+    }).then(response => response.json()).then(data => {
+      document.getElementById('displayed-image').src = data.image;
+document.getElementById('displayed-image').setAttribute('data-original-src', data.image);  // Update the data-original-src attribute
+clicks = [];  // Reset the clicks array here
+document.getElementById('click-position').textContent = "N/A";  // Update the click position display
+
+    });
 }
 
 
@@ -44,7 +57,7 @@ function navigate(direction) {
             });
         }
 
-let clicks = [];
+
 
 function recordPosition(event) {
     if (clicks.length < 2) {
