@@ -71,10 +71,10 @@ function displayFirstImage() {
 
 
 function navigate(direction) {
-    if (clicks.length === 2) {
+    boxes.forEach((box) => {
         const imagePath = document.getElementById('displayed-image').getAttribute('data-original-src');
         const imageName = filenames[imageIndex];
-        const logData = `${imageName};TopLeft:0.${clicks[0].x}l,0.${clicks[0].y}t;BotRight:0.${clicks[1].x}l,0.${clicks[1].y}t`;
+        const logData = `${imageName};TopLeft:0.${box[0].x}l,0.${box[0].y}t;BotRight:0.${box[1].x}l,0.${box[1].y}t`;
 
         fetch('/log_clicks', {
             method: 'POST',
@@ -83,7 +83,7 @@ function navigate(direction) {
             },
             body: JSON.stringify({ log: logData }),
         });
-    }
+    });
 
     if (direction === 'previous' && imageIndex > 0) {
         imageIndex--;
@@ -95,27 +95,32 @@ function navigate(direction) {
     img.src = images[imageIndex];
     img.setAttribute('data-original-src', images[imageIndex]);
 
-    clicks = [];  // Reset the clicks array
+    boxes = [];  // Reset the boxes array
     document.getElementById('click-position').textContent = "N/A";
 }
 
 
+let boxes = [];  // This holds sets of two clicks, each representing a box.
 
 
 
 function recordPosition(event) {
-    if (clicks.length < 2) {
-        const x = Math.floor((event.offsetX / event.target.width) * 100);
-        const y = Math.floor((event.offsetY / event.target.height) * 100);
-        clicks.push({ x: x, y: y });
-        document.getElementById('click-position').textContent = `${x}% from left, ${y}% from top`;
-        if (clicks.length === 2) {
-            drawRectangle();
-        }
+    const x = Math.floor((event.offsetX / event.target.width) * 100);
+    const y = Math.floor((event.offsetY / event.target.height) * 100);
+
+    // If the latest box doesn't have two clicks yet, add to it.
+    // Otherwise, start a new box.
+    if (boxes.length == 0 || boxes[boxes.length - 1].length == 2) {
+        boxes.push([{ x: x, y: y }]);
+    } else {
+        boxes[boxes.length - 1].push({ x: x, y: y });
+        drawRectangle(boxes[boxes.length - 1]);  // Draw the rectangle once two points are added.
     }
+
+    document.getElementById('click-position').textContent = `${x}% from left, ${y}% from top`;
 }
 
-function drawRectangle() {
+function drawRectangle(box) {
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
     const img = document.getElementById('displayed-image');
@@ -124,22 +129,22 @@ function drawRectangle() {
     canvas.height = img.height;
 
     ctx.drawImage(img, 0, 0);
-    if (clicks.length === 2) {
-        ctx.strokeStyle = 'red';
-        ctx.strokeRect(clicks[0].x / 100 * img.width, clicks[0].y / 100 * img.height,
-                       (clicks[1].x - clicks[0].x) / 100 * img.width,
-                       (clicks[1].y - clicks[0].y) / 100 * img.height);
-    }
+    ctx.strokeStyle = 'red';
+    ctx.strokeRect(box[0].x / 100 * img.width, box[0].y / 100 * img.height,
+                   (box[1].x - box[0].x) / 100 * img.width,
+                   (box[1].y - box[0].y) / 100 * img.height);
 
     img.src = canvas.toDataURL();
 }
 
+
 function clearClicks() {
-    clicks = [];
+    boxes = [];
     const img = document.getElementById('displayed-image');
     img.src = img.getAttribute('data-original-src');
     document.getElementById('click-position').textContent = "N/A";
 }
+
 
 
 
